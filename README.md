@@ -1,21 +1,46 @@
-# 🎷 Botsqware AI - The Smart Jazz Booker
+# Botsware
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+This repository contains the skeleton for the **botsware** Python project. It provides the basic folder structure and configuration needed to start building an agent that uses:
 
-**Botsqware AI** is an intelligent agent designed for bands (specifically tailored for Modern Jazz / Groove) who are sick of cold-pitching into the void. 
+- **FastAPI** for the webhook server
+- **Pydantic AI** for agent orchestration
+- **PostgreSQL with pgvector** for vector storage
+- **Redis** for conversation state
+- **APScheduler** for scheduling tasks
+- **Twilio** for WhatsApp integration
 
-Instead of sending 100 generic emails to venues that only book metal or indie rock, this tool searches for venues, qualifies them based on their recent programming, remembers past contacts to avoid duplicates, and drafts hyper-personalized email hooks.
 
-## ✨ Features
+## 📁 Structure
 
-* **Targeted Search:** Uses search engines to uncover relevant bars, clubs, and festivals.
-* **Ruthless Qualification (`pydantic-ai`):** The agent reads the venue's website or social media content and assigns a relevance score. If they don't book modern jazz/instrumental music, the lead is automatically discarded.
-* **Zero Duplicates (SQLite Memory):** The script keeps a local record of all analyzed URLs and venues. You will never accidentally pitch the same booker twice, and it saves unnecessary API calls.
-* **Hook Generator:** Say goodbye to writer's block. The AI generates a personalized opening line based on the latest artists who played at the venue, proving you actually know their vibe.
+The package itself lives under `botsware/` with subpackages for `db`, `api`, `services`, `agents`, `storage`, `state`, and `tasks`. All modules are initialized but contain no business logic yet.
 
-## 🛠️ Tech Stack
+## 🚀 Getting Started
 
-* **AI Orchestration:** `pydantic-ai`
-* **Database:** `SQLite` (local, lightweight, native to Python).
-* **Web Search:** `duckduckgo-search` (free) or `Google Custom Search` / `Tavily API`.
-* **Scraping/Extraction:** `crawl4ai` (or basic text extraction).
+1. Copy `.env.example` to `.env` and fill in your credentials.
+2. Run `docker-compose up` to start PostgreSQL, Redis, and pgvector.
+3. Install dependencies using your chosen package manager (uv). Example:
+   ```bash
+   uv install
+   ```
+4. Start the development server:
+   ```bash
+   uv run botsware.main:app --reload
+   ```
+
+Further implementation details can be added as the project grows.
+
+## ⏱️ Scheduler & Expiry Worker
+
+The application uses ``APScheduler`` to run background jobs during the
+FastAPI lifespan.  Two important recurring tasks are provided out of the
+box:
+
+* **Hourly expiry checker** – scans ``tasks`` for items awaiting human
+  review, sends WhatsApp reminders when three days remain, and marks
+  tasks expired when the deadline passes.
+* **Scheduled searches** – reads the ``search_schedules`` table and
+  triggers the gig agent according to cron expressions (new schedules can
+  be parsed from natural-language prompts).
+
+Supporting modules are located in ``botsware/services/`` (``scheduler.py``,
+``expiry_worker.py`` and ``schedule_parser.py``).

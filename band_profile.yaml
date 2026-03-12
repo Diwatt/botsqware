@@ -1,0 +1,120 @@
+name: "UNSQWARE"
+genre:
+  - jazz moderne
+  - jazz progressif
+  - jazz instrumental
+similar_artists:
+  - Aaron Parks
+  - Tigran Hamasyan
+  - The Cinematic Orchestra
+  - E.S.T.
+
+formation: quartet instrumental
+base_city: Nantes
+base_region: Pays de la Loire
+max_drive_hours: 2
+
+fee:
+  local_min: 350        # Nantes area, no overnight
+  touring_min: 600      # 1-2h drive, requires overnight or long day
+  preferred_max: 1500
+  negotiable: true      # worth noting for booker emails
+
+target_venue_types:
+  - jazz club
+  - salle de concert
+  - bar concert
+  - festival
+  - association culturelle
+  - MJC
+  - scène nationale
+  - SMAC
+
+venue_capacity:
+  min: 60
+  max: 400              # too big = wrong context for the band
+
+band_stage:
+  - "Printemps de Bourges OFF 2024"
+  - "Rendez-vous de l'Erdre shortlist 2024"
+  - "Festival Bar-Bars Nantes"
+  - "Conservatoire de Nantes"
+
+releases:
+  - type: singles
+    titles: ["Evoli", "Algebra"]
+    year: 2024
+    platforms: streaming
+  - type: live session
+    title: "Totem Live Session"
+    year: 2025
+    url: YouTube
+
+booking_contact_language:
+  - French
+  - English
+
+notes_for_agent: |
+  Prioritise venues within 2h of Nantes by car. For local gigs (Nantes metro area)
+  accept from 350e. For anything requiring driving, minimum 600e.
+  Do not contact venues with capacity above 400 or below 60.
+  The band has a strong visual identity (video content, geometric aesthetic) —
+  mention this when contacting festivals or arts venues.
+  Avoid pure rock or pop venues — the audience fit is wrong.
+
+search_strategy:
+  geo_waves:
+    - Nantes centre
+    - Nantes métropole
+    - Loire-Atlantique
+    - Vendée
+    - Maine-et-Loire
+    - Angers
+    - Rennes
+    - La Rochelle
+    - Tours
+  
+  fee_by_distance:
+    local_30km: 350
+    regional_100km: 600
+    max_200km: 800
+  
+  source_priority:
+    - duckduckgo
+    - fedelima.org
+    - sma-syndicat.org
+    - rif-musiques.com
+    - facebook
+    - instagram
+    - bandsintown
+    - songkick
+  
+  similar_acts:
+    - Aaron Parks
+    - Tigran Hamasyan
+    - E.S.T.
+    - The Bad Plus
+    - GoGo Penguin
+    - Avishai Cohen Trio
+  
+  seed_queries:
+    - "jazz clubs {city}"
+    - "salle concert jazz {city}"
+    - "{city} blues jazz venues"
+    - "festival jazz {region}"
+    - "scène nationale {city}"
+    - "association culturelle {city}"
+    - "MJC concert {city}"
+    - "SMAC {city}"
+    - "bar concert {city}"
+    - "{city} musique jazz modern"
+    - "concert hall {city} progressive"
+    - "jazz festival {region} 2025"
+    - "booking jazz {city} contact"
+    - "{city} live music venues"
+    - "jazz café {city}"
+    - "indie jazz {region}"
+    - "contemporary jazz {city}"
+    - "jazz trio quartet {region}"
+    - "{city} concert series"
+    - "jazz programmation {city}"
