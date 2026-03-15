@@ -14,20 +14,12 @@ applyTo: "botsware/**/*.py"
 | Folder | Purpose |
 |--------|---------|
 | **`botsware/`** | Root package. |
-| **`botsware/api/`** | HTTP endpoints (webhooks, health checks). Routes delegate to services. Import from `botsware.api`. |
-| **`botsware/agents/`** | Orchestration agents (stateless command executors). Contain tool definitions. Import from `botsware.agents`. |
-| **`botsware/container.py`** | Dependency injection container. All singletons and service factories. |
-| **`botsware/db/`** | Data persistence layer. Models (ORM), repositories, session management. Import from `botsware.db`. |
+| **`botsware/api/`** | HTTP endpoints (webhooks, health). Routes delegate to domain code. Import from `botsware.api`. |
+| **`botsware/db/`** | Data persistence layer: models + session factory. Import from `botsware.db`. |
 | **`botsware/db/models.py`** | SQLAlchemy ORM entities. One logical entity per class. |
-| **`botsware/db/repositories.py`** | Repository classes (one per entity). Data access abstraction. |
-| **`botsware/db/session.py`** | Async session and engine setup. Dependency for routes. |
-| **`botsware/jobs.py`** | Background job classes for scheduler (Strategy pattern). |
-| **`botsware/schemas.py`** | Pydantic models for validation and serialization. |
-| **`botsware/services/`** | Service abstractions and implementations (Twilio, Redis, etc.). Import from `botsware.services`. |
-| **`botsware/services/base_services.py`** | Abstract base classes (ABC) for external services. |
-| **`botsware/services/scheduler.py`** | APScheduler setup. Job registration. |
+| **`botsware/db/session.py`** | Async engine/session setup. FastAPI dependency provider. |
 | **`botsware/config.py`** | Pydantic Settings for environment variables. |
-| **`botsware/main.py`** | FastAPI application, startup/shutdown events, middleware. |
+| **`botsware/main.py`** | FastAPI application and startup events (migrations, health). |
 
 **Dependency Direction:**
 ```
@@ -50,15 +42,17 @@ ORM Model / External Client
 
 ### 2.1 One Class Per File
 
+- **One class per file**: do not define multiple classes in a single module (except trivial enums/constants). The file name should correspond to that one class.
 - **Filename must match class name exactly** (e.g., `VenueRepository` → `venue_repository.py`).
 - **Exception:** Constants, enums, and type aliases may live in the same file as the main class.
 - **Exception for packages:** `__init__.py` may export classes from submodules (barrel pattern).
 
-### 2.2 No "Utils" Modules
+### 2.2 No "Utils" Modules and No Standalone Functions
 
-- **NO:** `utils.py`, `helpers.py`, `common.py`, or standalone functions.
-- **YES:** Logic belongs to a class (Service, Repository, Agent, etc.).
-- **Pattern:** If you have a utility function, ask: "What is the responsibility?" Create a class for it.
+- **NO:** `utils.py`, `helpers.py`, `common.py`, or other catch-all modules.
+- **NO:** Top-level standalone functions (module-level helpers that are not methods on a class).
+- **YES:** Logic belongs to a class (Service, Repository, etc.) whose responsibility is clear.
+- **Pattern:** Ask "What is the responsibility?" and model it as a class. If you need reusable behavior, make it a method on a class or a dedicated helper class with a clear purpose.
 
 ### 2.3 Class Naming
 
