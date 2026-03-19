@@ -31,3 +31,8 @@ Thumbs.db
 # Testing
 .coverage
 htmlcov/
+
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo

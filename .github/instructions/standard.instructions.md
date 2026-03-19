@@ -1,687 +1,181 @@
 ---
-applyTo: "botsware/**/*.py"
+applyTo: "*.ts"
 ---
 
-# Standards: Architecture & OOP (Domain-Driven Design)
+# Standards: Architecture & OOP (Backend AI Agent)
 
-> Generated code under `botsware/` must comply with these standards.
-> Formatting, naming, imports, and type hints are enforced by **Ruff** (linter/formatter) — see `ruff.toml` or `pyproject.toml`.
+> Generated code under `src/*/generated/` and BAML client output under `baml_client/` are exempt. All wrapper/application code must comply.
+> Formatting, naming, imports, and visibility are enforced by **Biome** — see `biome.json`.
 
 ---
 
-## 1. Folder Structure (Domain-Driven Design)
+> 🔴 **CRITICAL RULE FOR IMPORTS (BUN ENVIRONMENT):**
+> Do NOT explain Node.js ESM rules to me. This project runs on **Bun** with `"moduleResolution": "bundler"` and `"noEmit": true` in `tsconfig.json`. There is no `dist/` folder.
+> **NEVER add `.js` or `.ts` extensions to relative imports.**
+> ✅ **Correct:** `import { AppConfig } from '../Core/AppConfig';`
+> ❌ **Wrong:** `import { AppConfig } from '../Core/AppConfig.js';`
+
+---
+
+## 1. Folder Structure (Domain-Driven Backend)
 
 | Folder | Purpose |
 |--------|---------|
-| **`botsware/`** | Root package. |
-| **`botsware/api/`** | HTTP endpoints (webhooks, health). Routes delegate to domain code. Import from `botsware.api`. |
-| **`botsware/db/`** | Data persistence layer: models + session factory. Import from `botsware.db`. |
-| **`botsware/db/models.py`** | SQLAlchemy ORM entities. One logical entity per class. |
-| **`botsware/db/session.py`** | Async engine/session setup. FastAPI dependency provider. |
-| **`botsware/config.py`** | Pydantic Settings for environment variables. |
-| **`botsware/main.py`** | FastAPI application and startup events (migrations, health). |
+| **Api/** | Hono routes and HTTP transport. Import from `@/Api`. |
+| **Agent/** | Mastra AI Agent instances and configurations. One agent per file. |
+| **Tools/** | Mastra Tools — strict OOP classes encapsulating agent actions. Import from `@/Tools`. |
+| **Database/** | Postgres connection, pgvector setup, Prisma ORM schemas and migrations. |
+| **Entity/** | Domain entities (pure data + getters/setters; no I/O). |
+| **Exception/** | Custom error types. |
+| **Prompt/** | BAML files (`.baml`) for prompt templates and typed LLM extraction contracts. No TS prompt strings here. |
+| **Service/** | Business logic capabilities. No `*Service` suffix. |
 
-**Dependency Direction:**
-```
-API Route
-  ↓
-Agent / Service
-  ↓
-Repository / Base Service
-  ↓
-ORM Model / External Client
-```
-
-- Never skip a layer (API should not directly import models).
-- Never import upward (models do not import agents).
-- Always use domain barrel exports (`from botsware.services import NotificationService`).
+- No top-level `utils`. Logic lives in classes.
+- Dependency direction: `Api → Agent/Service → Tools → Entity → Exception`.
+- Never import from a file directly if a domain barrel exists (`@/Service`, `@/Entity`, `@/Tools`, etc.).
 
 ---
 
-## 2. Class Structure (CRITICAL)
+## 2. OOP vs. Functional — The Critical Split (CRITICAL)
 
-### 2.1 One Class Per File
+This codebase applies **different paradigms in different layers**. Mixing them is a violation.
 
-- **One class per file**: do not define multiple classes in a single module (except trivial enums/constants). The file name should correspond to that one class.
-- **Filename must match class name exactly** (e.g., `VenueRepository` → `venue_repository.py`).
-- **Exception:** Constants, enums, and type aliases may live in the same file as the main class.
-- **Exception for packages:** `__init__.py` may export classes from submodules (barrel pattern).
+### Domain & Services → Strict OOP
 
-### 2.2 No "Utils" Modules and No Standalone Functions
+Business logic, Mastra Tools, and core service capabilities **MUST** be strict OOP:
 
-- **NO:** `utils.py`, `helpers.py`, `common.py`, or other catch-all modules.
-- **NO:** Top-level standalone functions (module-level helpers that are not methods on a class).
-- **YES:** Logic belongs to a class (Service, Repository, etc.) whose responsibility is clear.
-- **Pattern:** Ask "What is the responsibility?" and model it as a class. If you need reusable behavior, make it a method on a class or a dedicated helper class with a clear purpose.
+- **One Class Per File:** Filename must match class name exactly.
+  - Constants, enums, and module-level type exports are ALLOWED in the same file as their owning class.
+  - DO NOT move constants/exports to separate files unless they are themselves classes.
+- **No Standalone Functions:** Logic belongs to a class (`Service`, `Tool`, or `Entity`). Never define a free-standing exported function for business logic.
+- **Service Naming:** Use capability names (e.g. `LeadExtraction`, `WebhookProcessor`). NEVER append `*Service`.
+- **Dependency Injection:** Inject via constructor. Never instantiate a dependency inside a class body.
+- **No standalone `const` object literals as module-level exports.**
+  Use `export class X` with `public static readonly` members instead.
+  NEVER write `export const Config = { ... } as const`.
+  ALWAYS write `export class Config { public static readonly ... }`.
 
-### 2.3 Class Naming
+### Routing & Webhooks → Idiomatic Hono (Functional)
 
-- **Services:** Capability names (e.g., `NotificationService`, `VenueRepository`).
-  - Do NOT append `Service` or `Repo` suffix to nouns; it should be part of the class name.
-  - Example: `NotificationService` (good), `Twilio` (bad for this context).
-- **Repositories:** `EntityRepository` (e.g., `VenueRepository`, `TaskRepository`).
-- **Abstract Base Classes:** `AbstractClass` or `ClassName` with `@abstractmethod`.
-  - Example: `NotificationService`, `StateService` (both abstract if they define interface).
-- **Enums:** `EntityStatus`, `EntityType` (PascalCase, same as classes).
+DO NOT use classes for HTTP route definitions or plugin files:
 
-### 2.4 Dependency Injection
-
-- **Constructor Injection:** All external dependencies via `__init__`.
-  ```python
-  class VenueRepository:
-      def __init__(self, session: AsyncSession):
-          self.session = session
-  ```
-- **Container Only at Boundaries:** Only FastAPI route handlers, job executors, and app startup use the container directly.
-  ```python
-  @app.on_event("startup")
-  async def startup():
-      container = init_container(settings)
-      # ...
-  ```
-- **No Direct Imports of Singletons:** Do not `from botsware.services import notification_service`. Use container instead.
-- **Testability:** Mock by injecting a test double at boundaries.
-
-### 2.5 No Object Literals as Class State
-
-- **NO:** Module-level dicts, lists, or config objects.
-- **YES:** Use Pydantic models (`BandProfile`, `Settings`) or classes with properties.
+- Define routes by registering them on a single `Hono` app instance using `app.get()`, `app.post()`, etc.
+- Register routes in small focused modules and wire them together at the application entrypoint.
+- Prefer lightweight middleware for shared dependencies (e.g., `c.set()/c.get()`), or resolve services from `Container` in handlers.
+- Validate request bodies using Zod schemas and infer types via `z.infer<>` — see Rule 3.
 
 ---
 
-## 3. Member Ordering (PEP 8 + Type Hints)
+## 3. Type Inference — Zero Manual I/O Interfaces (CRITICAL)
 
-**Order within class:**
+**Never write manual `interface` or `type` definitions for API request/response payloads.**
 
-1. **Class variables** (with type hints).
-   ```python
-   class MyClass:
-       class_var: str = "default"
-   ```
+Always define a **Zod schema** (or another runtime schema) and infer the TypeScript type from it:
 
-2. **`__init__` and other special methods** (`__str__`, `__repr__`, etc.).
-   ```python
-   def __init__(self, name: str) -> None:
-       self.name = name
-   ```
+```ts
+// CORRECT
+import { z } from 'zod';
 
-3. **Public properties and methods** (alphabetically).
-   ```python
-   @property
-   def full_name(self) -> str:
-       return f"{self.first} {self.last}"
-   
-   async def do_something(self) -> None:
-       pass
-   ```
+const CreateLeadSchema = z.object({
+  phoneNumber: z.string(),
+  fullName: z.string(),
+});
 
-4. **Protected methods** (prefix `_`, alphabetically).
-   ```python
-   async def _internal_process(self) -> None:
-       pass
-   ```
+type CreateLeadPayload = z.infer<typeof CreateLeadSchema>;
 
-5. **Private methods** (prefix `__`, alphabetically; Python name-mangles, use sparingly).
-
-**One statement per line for multi-assignment is discouraged:**
-```python
-# NO
-x, y = 1, 2
-
-# YES
-x = 1
-y = 2
+// WRONG — never do this
+interface CreateLeadPayload {
+  phoneNumber: string;
+  fullName: string;
+}
 ```
+
+- Validate request bodies and responses using Zod schemas (or another runtime schema) and wire validation into Hono middleware or handler logic.
+- For ORM schemas (Drizzle), infer insert/select types from the table definition using `$inferInsert` / `$inferSelect`.
+- For Prisma, use the generated types directly. Do not re-declare them manually.
 
 ---
 
-## 4. Type Hints (PEP 484)
+## 4. Member Ordering
 
-**All functions and methods must have type hints:**
+> Visibility keywords (`public`, `private`, `protected`) are enforced by Biome (`useConsistentMemberAccessibility`).
 
-```python
-from typing import Optional, List, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-
-async def save_venue(
-    self,
-    venue: VenueResult,
-    session: AsyncSession,
-) -> VenueResult:
-    """Save a venue and return it with assigned ID."""
-    pass
-
-def calculate_score(ratings: List[float]) -> float:
-    """Calculate average score from a list of ratings."""
-    return sum(ratings) / len(ratings) if ratings else 0.0
-```
-
-**Return type for async functions:**
-```python
-async def my_async_func(x: int) -> Dict[str, Any]:
-    return {"result": x * 2}
-```
-
-**Use `Optional[T]` for nullable values:**
-```python
-def find_by_id(self, id: int) -> Optional[VenueResult]:
-    """Return venue or None if not found."""
-    pass
-```
-
-**Use `|` syntax (Python 3.10+) or `Union` for multiple types:**
-```python
-# Python 3.10+
-def process(value: str | int) -> None:
-    pass
-
-# Python 3.9 and earlier
-from typing import Union
-def process(value: Union[str, int]) -> None:
-    pass
-```
+- **Ordering:**
+  1. Properties: Static first, then Instance. Within each: `public → protected → private`, then alphabetically.
+  2. Constructor / Initializers.
+  3. Methods: `public → protected → private`, then alphabetically. Getters/Setters are methods.
+- **One property per statement.**
 
 ---
 
-## 5. Naming Conventions (Non-Automatable)
+## 5. Naming — Non-Automatable Conventions
 
-> **PEP 8–compliant naming. Enforced by Ruff where marked with (auto).**
+> PascalCase for types/classes, camelCase for members, CONSTANT_CASE for global consts, and `TName` for generics are all enforced by Biome.
+
+The following conventions require human judgment:
 
 | Target | Convention | Example |
 |--------|-----------|---------|
-| Modules | `snake_case` | `venue_repository.py`, `notification_service.py` |
-| Classes | `PascalCase` (auto) | `VenueRepository`, `NotificationService` |
-| Functions | `snake_case` (auto) | `get_venue_by_id()`, `send_notification()` |
-| Constants | `SCREAMING_SNAKE_CASE` (auto) | `MAX_RETRIES`, `DEFAULT_TIMEOUT` |
-| Variables | `snake_case` (auto) | `venue_id`, `is_active` |
-| Private/Protected | `_snake_case` (auto) | `_internal_cache`, `__private_var` |
-| Type Variables | `T`, `U`, `K`, `V` | `from typing import TypeVar; T = TypeVar("T")` |
-| Enums | `PascalCase.member_name` (auto) | `TaskStatus.pending`, `TaskType.send_email` |
+| Classes, Interfaces, Types | PascalCase | `AppLogger`, `LeadExtractionTool` |
+| Methods, Variables, Params | camelCase | `processWebhook`, `phoneNumber` |
+| Primitive constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES`, `DEFAULT_TIMEOUT_MS` |
+| Singleton instances | `Container.camelCase` | `Container.logger`, `Container.leadExtraction` |
+| Enum members | PascalCase | `MessageStatus.Delivered` |
+| Abstract Classes | `Abstract` prefix | `AbstractTool` |
+| Exceptions | `Exception` suffix | `WebhookValidationException` |
+| Private backing fields | `_camelCase` | `_client` (behind `get client()`) |
+| Hono routes | camelCase variable, exported | `export function registerWhatsAppWebhookRoutes(app: Hono) { ... }` |
 
-**No abbreviations** (except common ones: `id`, `db`, `api`):
-- ❌ `num_venues` → ✅ `venue_count`
-- ❌ `calc_avg` → ✅ `calculate_average`
-- ❌ `pk`, `fk` → ✅ `primary_key`, `foreign_key`
-
-**Domain-relevant naming:**
-- Do NOT repeat the folder name in the class (e.g., in `repository.py`, use `VenueRepository`, not `VenueRepositoryRepository`).
-- Use full words that convey intent.
+- No abbreviations (`msg`, `cfg`, `req`, `res`). Use full words. Exceptions: `id`, `uid`.
+- Do not repeat the folder name in identifiers (e.g. in `Tools/`, use `execute` not `toolExecute`).
 
 ---
 
-## 6. Docstrings (PEP 257 + Google Style)
+## 6. Logging
 
-**Module docstring:**
-```python
-"""Module for managing venue data access.
-
-This module provides repository classes for CRUD operations on venues,
-including deduplication via pgvector similarity.
-"""
-```
-
-**Class docstring:**
-```python
-class VenueRepository(BaseRepository):
-    """Repository for venue entity CRUD operations.
-    
-    Handles saving, retrieving, and deduplicating venues using
-    pgvector cosine similarity.
-    """
-```
-
-**Method/function docstring (only if non-obvious):**
-```python
-async def find_by_similarity(
-    self,
-    embedding: List[float],
-    threshold: float = 0.9,
-) -> Optional[VenueResult]:
-    """Find a venue by embedding similarity.
-    
-    Uses pgvector's cosine distance to detect duplicates.
-    
-    Args:
-        embedding: 1536-dimensional vector from embedding model.
-        threshold: Similarity threshold for match (default 0.9).
-    
-    Returns:
-        VenueResult if match found, None otherwise.
-    """
-    pass
-```
-
-**Simple methods: No docstring needed if the signature is self-documenting.**
-```python
-def is_expired(self) -> bool:
-    return datetime.utcnow() > self.expires_at
-```
+- Use `AppLogger` instance via DI.
+- No timestamps. The logger handles `dateFormat: 'time'`. Never add `new Date()`.
+- No PII in logs. Log only relevant identifiers/state (e.g. `messageId`, `agentId`).
 
 ---
 
-## 7. Dependencies & Imports
+## 7. Backwards Compatibility & Deprecations (WIP Policy)
 
-**Standard library first, then third-party, then local (PEP 8):**
-```python
-from typing import Optional, List
-from datetime import datetime
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
-
-from botsware.db.repositories import VenueRepository
-from botsware.schemas import VenueResult
-```
-
-**Never:**
-- Relative imports (use absolute: `from botsware.db import ...`).
-- Circular imports (reorganize to break cycles).
-- Star imports (`from module import *`).
+**Do not implement backward-compatibility layers until the code is ready for release.** During development you are free to rename APIs and refactor callers without leaving aliases or guard clauses behind.
 
 ---
 
-## 8. Async/Await (PEP 492)
+## 8. Service Container
 
-**All I/O must be async:**
-```python
-# Database access
-async with AsyncSessionLocal() as session:
-    venue = await session.execute(query)
+All runtime singleton instances live in `src/Core/Container.ts` as static properties of the `Container` class.
 
-# External service calls
-await notification_service.send_whatsapp(to, body)
-
-# Background jobs
-async def execute(self) -> None:
-    await self._do_work()
-```
-
-**Never block the event loop:**
-```python
-# NO
-import time
-time.sleep(5)  # Blocks event loop!
-
-# YES
-import asyncio
-await asyncio.sleep(5)
-```
+- **Access**: `Container.logger`, `Container.leadExtraction`, etc.
+- **No `export const` singletons**: Never export a singleton as a module-level `const`. Use Container.
+- **Primitive constants stay in domain files**: `MAX_RETRIES`, `DEFAULT_TIMEOUT_MS`, etc. remain as `CONSTANT_CASE` in their own files.
+- **Constructor injection preferred**: For testability, classes receive dependencies via constructor params. `Container` is used at the edges (Hono app entry, agent bootstrapping) to wire things together.
+- **No methods on Container**: It is a passive holder. No `init()`, no `dispose()`, no factories.
+- **Property naming**: camelCase, no prefixes. `logger` not `appLogger`.
 
 ---
 
-## 9. Service Container (Dependency Injection)
+## 9. Documentation — Symfony Style
 
-**All singletons and factories in `container.py`:**
-
-```python
-class Container:
-    def __init__(self, settings: Settings):
-        self.settings = settings
-        self._notification_service: Optional[NotificationService] = None
-
-    @property
-    def notification_service(self) -> NotificationService:
-        if self._notification_service is None:
-            self._notification_service = TwilioNotificationService(...)
-        return self._notification_service
-    
-    def get_venue_repository(self, session: AsyncSession) -> VenueRepository:
-        return VenueRepository(session)
-
-# Global instance
-_container: Optional[Container] = None
-
-def get_container() -> Container:
-    if _container is None:
-        raise RuntimeError("Container not initialized")
-    return _container
-
-def init_container(settings: Settings) -> Container:
-    global _container
-    _container = Container(settings)
-    return _container
-```
-
-**Usage in routes:**
-```python
-@app.get("/something")
-async def route(session: AsyncSession = Depends(get_db_session)) -> dict:
-    container = get_container()
-    venue_repo = container.get_venue_repository(session)
-    # ... use repo
-```
+- **No JSDoc** for self-explanatory methods, constructors, or properties.
+- Use JSDoc **only** for: class-level purpose, complex business logic, `@throws`, public API boundaries.
+- Prefer **self-documenting code** over comments.
+- Exception messages should be clear and descriptive.
 
 ---
 
-## 10. Logging (Python Logging Module)
+## 10. AI Assistant Workflow & Validation (CRITICAL)
 
-**Use `logging`, not print():**
-
-```python
-import logging
-
-logger = logging.getLogger(__name__)
-
-class VenueRepository:
-    async def save_venue(self, venue: VenueResult) -> VenueResult:
-        try:
-            # ...
-            logger.info(f"Saved venue: {venue.id}")
-        except Exception as e:
-            logger.error(f"Failed to save venue: {str(e)}", exc_info=True)
-            raise
-```
-
-**Levels:**
-- `logger.debug()` — Dev tracing.
-- `logger.info()` — Significant events.
-- `logger.warning()` — Recoverable issues.
-- `logger.error()` — Errors (with context).
-- `logger.critical()` — System failures.
-
-**No timestamps in log messages** — the logging framework handles it.
+- **Linter Handling:** Do not ignore errors flagged by Biome or ESLint. Read the active file's diagnostics (the red/yellow squiggles) and preemptively fix any styling, import, or typing issues before finalizing your code response.
+- **NO Terminal Formatting:** DO NOT attempt to run `bunx biome` or `bunx eslint` in the terminal after your edits. The user handles formatting locally via a dedicated macro (`Shift+Alt+S`). Your job is to provide clean code upfront, not to run formatting scripts.
 
 ---
 
-## 11. Abstract Base Classes (ABC)
-
-**Use `abc` module for service interfaces:**
-
-```python
-from abc import ABC, abstractmethod
-
-class NotificationService(ABC):
-    """Abstract notification service."""
-    
-    @abstractmethod
-    async def send_whatsapp(self, to: str, body: str) -> None:
-        """Send WhatsApp message."""
-        pass
-
-class TwilioNotificationService(NotificationService):
-    """Concrete Twilio implementation."""
-    
-    async def send_whatsapp(self, to: str, body: str) -> None:
-        # Real implementation
-        pass
-```
-
----
-
-## 12. Repository Pattern
-
-**Every repository extends `BaseRepository`:**
-
-```python
-class BaseRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-    
-    async def commit(self) -> None:
-        await self.session.commit()
-
-class VenueRepository(BaseRepository):
-    async def save_venue(self, venue: VenueResult) -> VenueResult:
-        """Persist venue and return with ID."""
-        pass
-    
-    async def find_by_name_and_city(
-        self,
-        name: str,
-        city: str,
-    ) -> Optional[VenueResult]:
-        """Query venue by name and city."""
-        pass
-```
-
----
-
-## 13. Validation (Pydantic v2)
-
-**All data models use Pydantic:**
-
-```python
-from pydantic import BaseModel, Field, field_validator
-
-class VenueResult(BaseModel):
-    id: Optional[int] = None
-    name: str
-    city: Optional[str] = None
-    relevance_score: float = Field(..., ge=0.0, le=1.0)
-    
-    @field_validator("relevance_score", mode="before")
-    def _validate_score(cls, v: Any) -> float:
-        return float(v)
-```
-
----
-
-## 14. Testing Strategy
-
-**All classes must be testable via DI:**
-
-```python
-# test_venue_repository.py
-import pytest
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-
-@pytest.fixture
-async def test_session():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with async_session() as session:
-        yield session
-    
-    await engine.dispose()
-
-@pytest.mark.asyncio
-async def test_save_venue(test_session):
-    repo = VenueRepository(test_session)
-    venue = VenueResult(name="Club", city="Paris", relevance_score=0.85, score_rationale="Great")
-    saved = await repo.save_venue(venue)
-    assert saved.id is not None
-```
-
----
-
-## 15. Background Jobs (APScheduler)
-
-**All jobs are classes with `async def execute()`:**
-
-```python
-class ExpirationJob:
-    """Check and expire old tasks."""
-    
-    async def execute(self) -> None:
-        container = get_container()
-        # Use container to get services/repos
-        pass
-
-# Registered in scheduler
-scheduler.add_job(ExpirationJob().execute, "cron", hour=0)
-```
-
----
-
-## 16. Environment & Configuration
-
-**Use Pydantic Settings with `.env` file:**
-
-```python
-from pydantic_settings import BaseSettings
-
-class Settings(BaseSettings):
-    database_url: str = Field(..., description="PostgreSQL URL")
-    redis_url: str = Field(..., description="Redis URL")
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-```
-
-**Load settings only once at startup:**
-```python
-@app.on_event("startup")
-async def startup():
-    settings = Settings()
-    init_container(settings)
-```
-
----
-
-## 17. Error Handling
-
-**Create custom exception classes in `botsware/exceptions.py` (or domain-specific modules):**
-
-```python
-class BotException(Exception):
-    """Base exception for botsware."""
-    pass
-
-class VenueNotFound(BotException):
-    """Raised when a venue cannot be found."""
-    pass
-
-class DuplicateVenueError(BotException):
-    """Raised when attempting to save a duplicate venue."""
-    pass
-```
-
-**Use them:**
-```python
-try:
-    await repo.save_venue(venue)
-except DuplicateVenueError as e:
-    logger.warning(f"Duplicate venue skipped: {e}")
-```
-
----
-
-## 18. AI Assistant Workflow & Validation (CRITICAL)
-
-### 18.1 Linting & Formatting
-
-**Before finalizing code changes:**
-
-1. **Ruff format:**
-   ```bash
-   ruff format botsware/
-   ```
-
-2. **Ruff check (linting):**
-   ```bash
-   ruff check botsware/ --fix
-   ```
-
-3. **Type checking (mypy):**
-   ```bash
-   mypy botsware/
-   ```
-
-4. **Run tests:**
-   ```bash
-   pytest tests/
-   ```
-
-### 18.2 Mandatory Validation After Edits
-
-**After EVERY code edit, run:**
-
-```bash
-# Format and lint specific file
-ruff format botsware/your_file.py
-ruff check botsware/your_file.py --fix
-
-# Check types
-mypy botsware/your_file.py
-```
-
-**If errors appear, fix them immediately.** Do NOT leave broken code.
-
-### 18.3 Import Organization
-
-Run before committing:
-```bash
-isort botsware/  # Organizes imports
-```
-
-Or configure in `pyproject.toml`:
-```toml
-[tool.isort]
-profile = "black"
-line_length = 100
-```
-
-### 18.4 Code Quality Thresholds
-
-- **Code coverage:** Aim for >80% on critical paths (repositories, services).
-- **Cyclomatic complexity:** Keep methods <10 (split large methods).
-- **Type coverage:** 100% of public APIs must have type hints.
-
----
-
-## 19. Git Workflow & Commits
-
-**Commit message format (conventional commits):**
-
-```
-feat(agents): add venue deduplication logic
-fix(services): handle Twilio rate limits
-refactor(db): simplify repository interface
-docs(readme): update setup instructions
-test(repositories): add venue equality tests
-```
-
-**Branch naming:**
-```
-feature/add-webhook-handler
-fix/duplicate-venue-check
-docs/update-architecture
-```
-
----
-
-## 20. Documentation
-
-**README sections:**
-- Overview & quickstart
-- Folder structure & architecture
-- Running locally (Docker, uv, dependencies)
-- Testing
-- Deployment
-- Contributing guidelines
-
-**Docstrings only for:**
-- Module purpose
-- Non-obvious class behavior
-- Complex algorithms
-- Public API boundaries
-
-**Self-documenting code preferred:**
-```python
-# NO
-def calc(x, y):  # calculates sum
-    return x + y
-
-# YES
-def sum_ratings(base_score: float, bonus_score: float) -> float:
-    return base_score + bonus_score
-```
-
----
-
-## Summary
-
-This standard enforces:
-✅ **SOLID principles** via abstractions, DI, single responsibility  
-✅ **Python best practices** (PEP 8, 257, 484, 492)  
-✅ **Testability** via constructor injection  
-✅ **Maintainability** via clear architecture and naming  
-✅ **Type safety** via full type hints  
-✅ **Clean code** via linting and formatting  
-
-**When in doubt, optimize for readability and testability.**
+## 11. MCP Tools (Zero-Hallucination Policy)
+
+You have access to MCP servers. Use them proactively:
+- **Context7:** ALWAYS use this tool to read the latest official documentation for `hono`, `mastra`, `drizzle-orm`, `@baml/client`, and `pgvector` before using their APIs to prevent hallucinations.
+- **Sequential Thinking:** Use this tool to break down complex architectural changes, agent design decisions, or multi-step refactoring before writing the code.

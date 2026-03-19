@@ -1,0 +1,6 @@
+/**
+ * Entity barrel file.
+ *
+ */
+
+export {};

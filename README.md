@@ -27,20 +27,78 @@ The package itself lives under `botsware/` with subpackages for `db`, `api`, `se
    uv run botsware.main:app --reload
    ```
 
-Further implementation details can be added as the project grows.
+## TypeScript Duplicate (Hono + Bun)
 
-## ⏱️ Scheduler & Expiry Worker
+TypeScript duplicate of the current webhook bot using:
 
-The application uses ``APScheduler`` to run background jobs during the
-FastAPI lifespan.  Two important recurring tasks are provided out of the
-box:
+- Hono
+- Vercel AI SDK
+- Bun for dependency management and runtime
 
-* **Hourly expiry checker** – scans ``tasks`` for items awaiting human
-  review, sends WhatsApp reminders when three days remain, and marks
-  tasks expired when the deadline passes.
-* **Scheduled searches** – reads the ``search_schedules`` table and
-  triggers the gig agent according to cron expressions (new schedules can
-  be parsed from natural-language prompts).
+## Prerequisites
 
-Supporting modules are located in ``botsware/services/`` (``scheduler.py``,
-``expiry_worker.py`` and ``schedule_parser.py``).
+ - Bun runtime
+
+Install Bun on macOS/Linux:
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+## Setup
+
+```bash
+bun install
+cp .env.example .env
+```
+
+## Environment Variables
+
+- `PORT` (default: `8000`)
+- `LOG_LEVEL` (default: `info`)
+- `LLM_BASE_URL` (default: `http://192.168.7.115:8001/v1`)
+- `LLM_MODEL` (default: `qwen3.5-9b`)
+- `LLM_API_KEY` (default: `not-needed`)
+- `WAHA_BASE_URL` (default: `http://localhost:3000`)
+- `WAHA_SESSION` (default: `default`)
+- `GROUP_ID` (default: empty, no group filter)
+
+## Run
+
+Development (watch mode):
+
+```bash
+bun run dev
+```
+
+Production-like run:
+
+```bash
+bun run start
+```
+
+Type check:
+
+```bash
+bun run typecheck
+```
+
+Build:
+
+```bash
+bun run build
+```
+
+## API
+
+- `GET /health`
+- `POST /webhooks/whatsapp`
+
+The webhook mirrors Python behavior:
+
+- ignores non-`message` events
+- ignores `fromMe = true`
+- optionally filters by `GROUP_ID`
+- calls WAHA `sendSeen`
+- queries LLM using Vercel AI SDK
+- simulates typing and sends reply via WAHA

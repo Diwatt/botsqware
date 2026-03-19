@@ -2,71 +2,32 @@ services:
   postgres:
     image: ankane/pgvector:latest
     environment:
-      POSTGRES_DB: botsware
-      POSTGRES_USER: botsware
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB:-botsware}
+      POSTGRES_USER: ${POSTGRES_USER:-botsware}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U botsware -d botsware"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botsware} -d ${POSTGRES_DB:-botsware}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-
   waha:
     restart: always
-    # Use the ARM build of WAHA for Apple Silicon / ARM hosts.
-    # If you are on x86_64, you can revert this to `devlikeapro/waha:latest`.
-    image: devlikeapro/waha:arm
-
-    # Ensure WAHA listens on all interfaces inside the container
-    environment:
-      WHATSAPP_API_HOSTNAME: 0.0.0.0
-      WHATSAPP_API_PORT: 3000
-
-      # Enable dashboard (optional, but useful for debugging).
-      # Note: WAHA blocks common passwords like "waha" / "admin", so use a stronger value.
-      WAHA_DASHBOARD_ENABLED: "true"
-      WAHA_DASHBOARD_USERNAME: waha
-      WAHA_DASHBOARD_PASSWORD: waha1234
-
-      # Swagger / root API auth (used when visiting http://localhost:3000/)
-      # Without these, WAHA will auto-generate credentials each restart.
-      WHATSAPP_SWAGGER_USERNAME: admin
-      WHATSAPP_SWAGGER_PASSWORD: waha1234
-
-      # Enable API key auth so the dashboard can connect reliably.
-      # Make sure the same key is configured in the Dashboard server entry.
-      WAHA_API_KEY: supersecret123
-      WAHA_NO_API_KEY: "false"
-
+    image: devlikeapro/waha:arm-2026.3.2
+    container_name: botsqware-waha
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     volumes:
-      # Persist session data across restarts
       - waha_sessions:/app/.sessions
-
-  fastapi:
-    build: .
-    environment:
-      POSTGRES_URL: postgresql+asyncpg://botsware:password@postgres:5432/botsware
-      GROUP_NAME: ${GROUP_NAME:-}
-      GROUP_ID: ${GROUP_ID:-}
-      WAHA_BASE_URL: ${WAHA_BASE_URL:-http://waha:3000}
-      LLM_MODEL: ${LLM_MODEL:-ai/qwen2.5:7B-Q4_K_M}
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://model-runner:12434}
-      LLM_API_KEY: ${LLM_API_KEY:-not-needed}
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      waha:
-        condition: service_started
+      - waha_media:/app/.media
 
 volumes:
   pgdata:
   waha_sessions:
+  waha_media:

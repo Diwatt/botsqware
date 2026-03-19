@@ -1,23 +1,23 @@
-FROM python:3.11-slim
-
+# Utilisation de l'image officielle Bun (ultra légère)
+FROM oven/bun:1 AS base
 WORKDIR /app
 
-# Install uv
-RUN pip install uv
+# On installe les dépendances en cache pour aller très vite
+FROM base AS install
+COPY package.json ./
+RUN bun install
 
-# Copy dependency files
-COPY pyproject.toml uv.lock* ./
+# Étape finale
+FROM base AS release
+COPY --from=install /app/node_modules node_modules
+COPY . .
 
-# Install dependencies
-RUN uv sync --frozen --no-editable
+# Variables d'environnement par défaut
+ENV NODE_ENV=production
+ENV PORT=8000
 
-# Copy application
-COPY botsqware ./botsqware
-COPY migrations ./migrations
-COPY alembic.ini ./
-
-# Expose port
+# Exposer le port
 EXPOSE 8000
 
-# Run FastAPI
-CMD ["uv", "run", "uvicorn", "botsqware.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Démarrer l'application avec Bun
+CMD ["bun", "run", "src/index.ts"]
