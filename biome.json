@@ -19,7 +19,8 @@
             "!**/*.test.ts",
             "!**/*.test.tsx",
             "!**/*.spec.ts",
-            "!**/*.spec.tsx"
+            "!**/*.spec.tsx",
+            "!src/Api/WahaClient.ts"
         ]
     },
     "assist": {

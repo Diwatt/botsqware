@@ -13,20 +13,19 @@ export class WhatsAppAgent {
         private readonly logger: AppLogger,
     ) {
         const localProvider = createOpenAI({
-            baseURL: config.getSettings().llmBaseUrl,
-            apiKey: config.getSettings().llmApiKey,
+            baseURL: config.llmBaseUrl,
+            apiKey: config.llmApiKey,
         });
 
         const agentCfg = {
             id: 'whatsapp-assistant',
             name: 'WhatsApp Assistant',
-            instructions: `
-                You are a professional and concise WhatsApp assistant. 
-                Your goal is to provide helpful, direct, and brief answers. 
-                Always maintain a friendly but efficient tone. 
-                If the user speaks in another language, respond in that same language.
-            `,
-            model: localProvider(config.getSettings().llmModel),
+            instructions: `You are a highly efficient API-like WhatsApp router.
+            Your ONLY function is to output the final user-facing response.
+            Tone: Friendly, concise, professional.
+            Language: Match the user's language exactly.
+            FORMAT REQUIREMENT: Output strictly the final message. No introductory text. No inner monologue.`,
+            model: localProvider(config.llmModel),
         };
 
         this.agent = new Agent(agentCfg);
@@ -42,7 +41,7 @@ export class WhatsAppAgent {
             const response = await this.agent.generate(prompt);
             return response.text ? response.text.trim() : null;
         } catch (error) {
-            this.logger.error('Agent generation failed', error);
+            this.logger.sys.error('Agent generation failed', error);
             return null;
         }
     }

@@ -1,9 +1,13 @@
+import { WahaProvider } from '../Api/WahaProvider';
 import { DependencyResolutionException } from '../Exception/DependencyResolutionException';
+import { WahaConfigurator } from '../Api/WahaConfigurator';
 import { AppConfig } from './AppConfig';
 import { AppLogger } from './AppLogger';
 
-// biome-ignore lint/suspicious/noExplicitAny: needed for a flexible factory signature
-export type ClassType<T = unknown> = new (...args: any[]) => T;
+export interface ClassType<T = unknown> {
+    prototype: T;
+    name: string;
+}
 
 export class Container {
     private static readonly dependencies = new Map<ClassType | symbol, unknown>();
@@ -12,6 +16,16 @@ export class Container {
     public static initialize(): void {
         Container.register(AppConfig, () => new AppConfig(), true);
         Container.register(AppLogger, () => new AppLogger(Container.get(AppConfig)), true);
+        Container.register(
+            WahaProvider,
+            () => WahaProvider.create(Container.get(AppConfig), Container.get(AppLogger)),
+            true,
+        );
+        Container.register(
+            WahaConfigurator,
+            () => new WahaConfigurator(Container.get(AppConfig), Container.get(AppLogger), Container.get(WahaProvider)),
+            true,
+        );
     }
 
     public static register<T>(cls: ClassType<T>, factory: () => T, forceCreation = false): void {
