@@ -15,12 +15,45 @@ services:
       timeout: 3s
       retries: 10
 
+  directus:
+    image: directus/directus:latest
+    ports:
+      - "8055:8055"
+    environment:
+      - KEY=${DIRECTUS_KEY:-key}
+      - SECRET=${DIRECTUS_SECRET:-secret}
+      - DB_CLIENT=pg
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DIRECTUS_DB:-directus}
+      - DB_USER=${POSTGRES_USER:-botsware}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - ADMIN_EMAIL=florian.roy@gmail.com
+      - ADMIN_PASSWORD=${DIRECTUS_ADMIN_PASSWORD:-admin123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   waha:
     restart: always
     image: devlikeapro/waha:arm-2026.3.2
     container_name: botsqware-waha
-    env_file:
-      - .env
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:-e848a236051f4bd28e09cd336102ffa1}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:-admin123}
+      WHATSAPP_SWAGGER_USERNAME: ${WHATSAPP_SWAGGER_USERNAME:-admin}
+      WHATSAPP_SWAGGER_PASSWORD: ${WHATSAPP_SWAGGER_PASSWORD:-admin123}
+      WAHA_DASHBOARD_ENABLED: "True"
+      WHATSAPP_SWAGGER_ENABLED: "True"
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WHATSAPP_START_SESSION: default
+      WHATSAPP_HOOK_URL: http://host.docker.internal:8000/webhooks/whatsapp
+      WHATSAPP_HOOK_EVENTS: message,message.any
+      WAHA_BASE_URL: http://localhost:3000
+      WAHA_LOG_FORMAT: JSON
+      WAHA_LOG_LEVEL: info
+      WAHA_NO_API_KEY: "False"
     ports:
       - "3000:3000"
     volumes:

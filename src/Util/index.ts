@@ -14,13 +14,12 @@ import { Container } from '../Core/Container';
  * - Respects the global app log level (from `AppConfig`) instead of using a hardcoded default.
  */
 export async function swallow<T>(
-    promise: Promise<T>,
-    logLevel: AppLogLevel = 'debug',
+    promise: Promise<T>
 ): Promise<void> {
     try {
         await promise;
     } catch (err) {
-        // Call the selected method with structured context.
-        Container.get(AppLogger).sys[logLevel]('Ignored error', { err });
+        const meta = { err: err as Error };
+        Container.get(AppLogger).sys.debug('Ignored error', meta);
     }
 }

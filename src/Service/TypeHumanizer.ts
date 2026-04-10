@@ -53,7 +53,7 @@ export class TypeHumanizer {
     }
 
     public async sendReaction(chatId: string, messageId: string, reaction: Emoji | string): Promise<void> {
-        const readingTime = Math.random() * 800 + 1000;
+        const readingTime = Math.random() * 4000 + 4000;
 
         this.appLogger.sys.debug('Simulating reaction delay', {
             chatId,
@@ -82,18 +82,21 @@ export class TypeHumanizer {
         });
 
         const baseTypingTimeMs = text.length * 100;
-        const maxTypingTimeMs = 12000;
+        const maxTypingTimeMs = Math.floor(Math.random() * 18000) + 12000;
         const expectedHumanTimeMs = Math.min(baseTypingTimeMs, maxTypingTimeMs);
 
-        const remainingTypingTimeMs = expectedHumanTimeMs - llmDurationMs;
+        const remainingTypingTimeMs = Math.max(0, expectedHumanTimeMs - llmDurationMs);
+        const minTypingTimeMs = 2000;
 
-        if (remainingTypingTimeMs > 0) {
-            this.appLogger.sys.debug('Simulating additional typing hesitations', {
-                chatId,
-                remainingTypingTimeMs,
-            });
-            await this.simulateHesitations(chatId, remainingTypingTimeMs);
-        }
+        const totalTypingTimeMs = remainingTypingTimeMs + minTypingTimeMs;
+
+        this.appLogger.sys.debug('Simulating typing delay', {
+            chatId,
+            remainingTypingTimeMs,
+            minTypingTimeMs,
+            totalTypingTimeMs,
+        });
+        await this.simulateHesitations(chatId, totalTypingTimeMs);
 
         await this.wahaProvider.stopTyping(chatId);
         await this.sendText(chatId, text);

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AppConfig } from '../Core/AppConfig';
 import { AppLogger } from '../Core/AppLogger';
 import { Container } from '../Core/Container';
-import { TypeHumanizer, WhatsAppAgent } from '../Service';
+import { TypeHumanizer, WhatsAppAssistant } from '../Service';
 import { swallow } from '../Util';
 
 const WhatsAppWebhookSchema = z
@@ -46,7 +46,7 @@ const WhatsAppWebhookSchema = z
 const BOT_TRIGGER = '@bot';
 export function WhatsAppWebhook(app: Hono): void {
     const appLogger = Container.get(AppLogger);
-    const whatsAppAgent = Container.get(WhatsAppAgent);
+    const whatsAppAssistant = Container.get(WhatsAppAssistant);
     const typeHumanizer = Container.get(TypeHumanizer);
     const allowedGroupId = Container.get(AppConfig).allowedGroupId;
 
@@ -87,7 +87,7 @@ export function WhatsAppWebhook(app: Hono): void {
         await swallow(typeHumanizer.sendThinkingReaction(chatId, messageId));
         typeHumanizer
             .executeWithHumanTyping(chatId, async () => {
-                const replyText = await whatsAppAgent.processMessage(promptText);
+                const replyText = await whatsAppAssistant.processMessage(promptText, chatId);
 
                 return replyText || "Désolé, j'ai eu un petit trou de mémoire. 😅";
             })
