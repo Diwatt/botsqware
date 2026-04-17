@@ -2,21 +2,12 @@ import { createDirectus, createItem, rest, staticToken } from '@directus/sdk';
 
 import { AppConfig } from '../Core/AppConfig';
 import { Container } from '../Core/Container';
-import { Opportunity } from '../Entity/Opportunity';
+import type { SnakeCasedProperties } from '../Entity/AbstractEntity';
+import type { Opportunity, OpportunityProps } from '../Entity/Opportunity';
+import { ApplicationConfigurationException } from '../Exception';
 
 interface DirectusSchema {
-    opportunity: {
-        id: number;
-        name: string;
-        type: string;
-        city?: string;
-        venue?: string;
-        url?: string;
-        event_at?: string;
-        deadline_at?: string;
-        notes?: string;
-        status: string;
-    }[];
+    opportunity: (SnakeCasedProperties<OpportunityProps> & { id: number })[];
 }
 
 export class DirectusClient {
@@ -26,7 +17,7 @@ export class DirectusClient {
         const token = this.config.directusToken;
 
         if (!token) {
-            throw new Error('DIRECTUS_ADMIN_TOKEN environment variable is required');
+            throw new ApplicationConfigurationException('DIRECTUS_ADMIN_TOKEN environment variable is required');
         }
 
         this.client = createDirectus<DirectusSchema>(this.config.directusUrl).with(staticToken(token)).with(rest());

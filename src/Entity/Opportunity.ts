@@ -22,21 +22,7 @@ export const OpportunitySchema = z.object({
 
 export type OpportunityProps = z.infer<typeof OpportunitySchema>;
 
-export interface OpportunityPayload {
-    id?: number;
-    name: string;
-    type: OpportunityType;
-    city?: string;
-    venue?: string;
-    url?: string;
-    event_at?: string;
-    deadline_at?: string;
-    notes?: string;
-    status: OpportunityStatus;
-    [key: string]: unknown;
-}
-
-export class Opportunity extends AbstractEntity<OpportunityProps, OpportunityPayload> {
+export class Opportunity extends AbstractEntity<OpportunityProps> {
     private constructor(id: number | undefined, props: OpportunityProps) {
         super(id, props);
     }

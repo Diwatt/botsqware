@@ -20,6 +20,7 @@ export class AgentMemory {
         this.vector = new PgVector({
             id: 'mastra-vector',
             connectionString: config.databaseUrl,
+            dimension: 1536,
         });
 
         this.memory = new Memory({
