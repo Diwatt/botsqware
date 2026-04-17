@@ -28,6 +28,8 @@ const EnvSchema = z.object({
     postgresUser: z.string().default('botsware'),
     postgresPassword: z.string().default('password'),
     postgresDb: z.string().default('botsware'),
+    directusUrl: z.string().url().default('http://localhost:8055'),
+    directusToken: z.string().default(''),
 });
 
 export type AppSettings = z.infer<typeof EnvSchema>;
@@ -50,6 +52,8 @@ export class AppConfig implements AppSettings {
     public readonly postgresUser: string = 'botsware';
     public readonly postgresPassword: string = 'password';
     public readonly postgresDb: string = 'botsware';
+    public readonly directusUrl: string = 'http://localhost:8055';
+    public readonly directusToken: string = '';
 
     public constructor() {
         dotenv.config();
@@ -71,6 +75,8 @@ export class AppConfig implements AppSettings {
             postgresUser: process.env.POSTGRES_USER,
             postgresPassword: process.env.POSTGRES_PASSWORD,
             postgresDb: process.env.POSTGRES_DB,
+            directusUrl: process.env.DIRECTUS_URL,
+            directusToken: process.env.DIRECTUS_ADMIN_TOKEN,
         };
 
       const parsed = EnvSchema.safeParse(rawEnv);
@@ -99,6 +105,8 @@ export class AppConfig implements AppSettings {
         this.postgresUser = parsed.data.postgresUser;
         this.postgresPassword = parsed.data.postgresPassword;
         this.postgresDb = parsed.data.postgresDb;
+        this.directusUrl = parsed.data.directusUrl;
+        this.directusToken = parsed.data.directusToken;
     }
 
     public get databaseUrl(): string {

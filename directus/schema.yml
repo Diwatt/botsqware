@@ -1,0 +1,285 @@
+version: 1
+directus: "10.x.x"
+vendor: postgres
+
+collections:
+  - collection: opportunity
+    meta:
+      hidden: false
+      icon: event
+    schema:
+      name: opportunity
+
+  - collection: band
+    meta:
+      hidden: false
+      icon: badge
+    schema:
+      name: band
+
+  - collection: message
+    meta:
+      hidden: false
+      icon: chat
+    schema:
+      name: message
+
+fields:
+  # FIELDS: OPPORTUNITY
+  - collection: opportunity
+    field: id
+    type: integer
+    schema:
+      is_primary_key: true
+      has_auto_increment: true
+
+  - collection: opportunity
+    field: name
+    type: string
+    schema:
+      is_nullable: false
+    meta:
+      interface: input
+
+  - collection: opportunity
+    field: type
+    type: string
+    schema:
+      is_nullable: false
+    meta:
+      interface: select-dropdown
+      options:
+        choices:
+          - text: gig
+            value: gig
+          - text: contest
+            value: contest
+          - text: festival
+            value: festival
+          - text: residency
+            value: residency
+          - text: other
+            value: other
+
+  - collection: opportunity
+    field: status
+    type: string
+    schema:
+      default_value: 'to_contact'
+    meta:
+      interface: select-dropdown
+      options:
+        choices:
+          - text: to_contact
+            value: to_contact
+          - text: applied
+            value: applied
+          - text: negotiating
+            value: negotiating
+          - text: booked
+            value: booked
+          - text: rejected
+            value: rejected
+
+  - collection: opportunity
+    field: deadline_at
+    type: timestamp
+    meta:
+      interface: datetime
+
+  - collection: opportunity
+    field: event_at
+    type: timestamp
+    meta:
+      interface: datetime
+
+  - collection: opportunity
+    field: city
+    type: string
+    meta:
+      interface: input
+
+  - collection: opportunity
+    field: venue
+    type: string
+    meta:
+      interface: input
+
+  - collection: opportunity
+    field: url
+    type: string
+    meta:
+      interface: input
+
+  - collection: opportunity
+    field: contact_email
+    type: string
+    meta:
+      interface: input
+
+  - collection: opportunity
+    field: compensation
+    type: text
+    meta:
+      interface: input-multiline
+
+  - collection: opportunity
+    field: notes
+    type: text
+    meta:
+      interface: input-rich-text-html
+
+  - collection: opportunity
+    field: created_at
+    type: timestamp
+    schema:
+      default_value: CURRENT_TIMESTAMP
+    meta:
+      readonly: true
+
+  - collection: opportunity
+    field: updated_at
+    type: timestamp
+    schema:
+      default_value: CURRENT_TIMESTAMP
+    meta:
+      readonly: true
+
+  # FIELDS: band
+  - collection: band
+    field: id
+    type: integer
+    schema:
+      is_primary_key: true
+      has_auto_increment: true
+
+  - collection: band
+    field: key
+    type: string
+    schema:
+      is_unique: true
+      is_nullable: false
+    meta:
+      interface: input
+
+  - collection: band
+    field: value
+    type: text
+    schema:
+      is_nullable: false
+    meta:
+      interface: input-multiline
+
+  - collection: band
+    field: created_at
+    type: timestamp
+    schema:
+      default_value: CURRENT_TIMESTAMP
+    meta:
+      readonly: true
+
+  - collection: band
+    field: updated_at
+    type: timestamp
+    schema:
+      default_value: CURRENT_TIMESTAMP
+    meta:
+      readonly: true
+
+
+  # FIELDS: MESSAGE
+  - collection: message
+    field: id
+    type: integer
+    schema:
+      is_primary_key: true
+      has_auto_increment: true
+
+  - collection: message
+    field: opportunity_id
+    type: integer
+    meta:
+      interface: system-display-relation
+
+  - collection: message
+    field: direction
+    type: string
+    schema:
+      is_nullable: false
+      default_value: 'outbound'
+    meta:
+      interface: select-dropdown
+      options:
+        choices:
+          - text: Outbound (We sent)
+            value: outbound
+          - text: Inbound (They replied)
+            value: inbound
+
+  - collection: message
+    field: channel
+    type: string
+    schema:
+      is_nullable: false
+    meta:
+      interface: select-dropdown
+      options:
+        choices:
+          - text: Email
+            value: email
+          - text: WhatsApp
+            value: whatsapp
+          - text: SMS
+            value: sms
+          - text: Instagram
+            value: instagram
+          - text: Facebook
+            value: facebook
+          - text: Phone
+            value: phone
+          - text: LinkedIn
+            value: linkedin
+          - text: Website Form
+            value: form
+
+  - collection: message
+    field: contact_handle
+    type: string
+    meta:
+      interface: input
+      note: 'The specific email, phone number, or social handle used'
+
+  - collection: message
+    field: content
+    type: text
+    schema:
+      is_nullable: false
+    meta:
+      interface: input-multiline
+
+  - collection: message
+    field: sent_at
+    type: timestamp
+    schema:
+      default_value: CURRENT_TIMESTAMP
+    meta:
+      interface: datetime
+
+  - collection: message
+    field: created_at
+    type: timestamp
+    schema:
+      default_value: CURRENT_TIMESTAMP
+    meta:
+      readonly: true
+
+relations:
+  # RELATIONS
+  - collection: message
+    field: opportunity_id
+    related_collection: opportunity
+    schema:
+      foreign_key_column: opportunity_id
+      foreign_key_table: message
+      reference_table: opportunity
+      on_delete: SET NULL

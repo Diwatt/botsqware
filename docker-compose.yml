@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ankane/pgvector:latest
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-botsware}
       POSTGRES_USER: ${POSTGRES_USER:-botsware}
@@ -9,6 +9,9 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    configs:
+      - source: pg_init
+        target: /docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-botsware} -d ${POSTGRES_DB:-botsware}"]
       interval: 5s
@@ -25,14 +28,17 @@ services:
       - DB_CLIENT=pg
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_DATABASE=${DIRECTUS_DB:-directus}
+      - DB_DATABASE=${POSTGRES_DB_CRM:-botsware_crm}
       - DB_USER=${POSTGRES_USER:-botsware}
       - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - ADMIN_EMAIL=florian.roy@gmail.com
-      - ADMIN_PASSWORD=${DIRECTUS_ADMIN_PASSWORD:-admin123}
+      - ADMIN_EMAIL=${DIRECTUS_ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${DIRECTUS_ADMIN_PASSWORD:-password}
+    volumes:
+      - ./directus/schema.yml:/directus/schema.yml
     depends_on:
       postgres:
         condition: service_healthy
+
 
   waha:
     restart: always
@@ -64,3 +70,8 @@ volumes:
   pgdata:
   waha_sessions:
   waha_media:
+
+configs:
+  pg_init:
+    content: |
+      CREATE DATABASE ${POSTGRES_DB_CRM:-botsware_crm};
