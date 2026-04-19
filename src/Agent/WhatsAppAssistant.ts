@@ -1,9 +1,11 @@
 import { Agent } from '@mastra/core/agent';
 import type { Memory } from '@mastra/memory';
+import type { Tool, ToolSet } from '@mastra/core/tools';
 
 import { AppLogger } from '../Core/AppLogger';
 import { Container } from '../Core/Container';
 import { AddOpportunityTool } from '../Tool/AddOpportunityTool';
+import { UpdateOpportunityTool } from '../Tool/UpdateOpportunityTool';
 import { AgentMemory } from './AgentMemory';
 import { LLMProvider } from './LLMProvider';
 import { ThinkTagStripper } from './ThinkTagStripper';
@@ -16,6 +18,7 @@ export class WhatsAppAssistant {
         private readonly memory: Memory,
         private readonly provider: LLMProvider,
         private readonly addOpportunityTool: AddOpportunityTool,
+        private readonly updateOpportunityTool: UpdateOpportunityTool,
     ) {
         const agentCfg = {
             id: 'whatsapp-assistant',
@@ -27,6 +30,7 @@ When a user shares an opportunity:
 - Extract all available details (name, type, city, venue, URL, event date, deadline, notes).
 - Call the add-opportunity tool with whatever information is provided.
 - If details are missing, save what you have and casually ask the user for the rest.
+- If the user provides missing details for an opportunity we just discussed, use the update-opportunity tool with its ID.
 
 Tone: Friendly, concise, professional.
 Language: You MUST respond in English only, regardless of the user's language.
@@ -35,7 +39,8 @@ FORMAT: Output strictly the final user-facing message. No introductory text. No 
             memory: this.memory,
             outputProcessors: [new ThinkTagStripper()],
             tools: {
-                addOpportunity: this.addOpportunityTool.tool,
+                [this.addOpportunityTool.id]: this.addOpportunityTool.mastraTool,
+                [this.updateOpportunityTool.id]: this.updateOpportunityTool.mastraTool,
             },
         };
 
@@ -68,5 +73,6 @@ Container.register(WhatsAppAssistant, () => {
         Container.get(AgentMemory).getMemory(),
         Container.get(LLMProvider),
         Container.get(AddOpportunityTool),
+        Container.get(UpdateOpportunityTool),
     );
 });

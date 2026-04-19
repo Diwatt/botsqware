@@ -1,4 +1,4 @@
-import { createDirectus, createItem, rest, staticToken } from '@directus/sdk';
+import { createDirectus, createItem, rest, staticToken, updateItem } from '@directus/sdk';
 
 import { AppConfig } from '../Core/AppConfig';
 import { Container } from '../Core/Container';
@@ -27,6 +27,10 @@ export class DirectusClient {
         const result = await this.client.request(createItem('opportunity', opportunity.toPayload()));
 
         return result.id;
+    }
+
+    public async updateOpportunity(id: number, data: Partial<OpportunityProps>): Promise<void> {
+        await this.client.request(updateItem('opportunity', id, data));
     }
 }
 

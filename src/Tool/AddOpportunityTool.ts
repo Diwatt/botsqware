@@ -1,10 +1,10 @@
-import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
 import { Container } from '../Core/Container';
 import { AppLogger } from '../Core/AppLogger';
 import { DirectusClient } from '../Api/DirectusClient';
 import { Opportunity, OpportunitySchema } from '../Entity/Opportunity';
+import { AbstractTool } from './AbstractTool';
 
 const AddOpportunityInputSchema = OpportunitySchema.omit({ status: true });
 type AddOpportunityInput = z.infer<typeof AddOpportunityInputSchema>;
@@ -16,23 +16,20 @@ const AddOpportunityOutputSchema = z.object({
 });
 type AddOpportunityOutput = z.infer<typeof AddOpportunityOutputSchema>;
 
-export class AddOpportunityTool {
-    public readonly tool;
-
+export class AddOpportunityTool extends AbstractTool<typeof AddOpportunityInputSchema, typeof AddOpportunityOutputSchema> {
     public constructor(
         private readonly directusClient: DirectusClient,
         private readonly logger: AppLogger,
     ) {
-        this.tool = createTool({
-            id: 'add-opportunity',
-            description: 'Saves a gig, festival, contest, or other music opportunity to the CRM for follow-up.',
-            inputSchema: AddOpportunityInputSchema,
-            outputSchema: AddOpportunityOutputSchema,
-            execute: this.execute.bind(this),
-        });
+        super(
+            'add-opportunity',
+            'Saves a gig, festival, contest, or other music opportunity to the CRM for follow-up.',
+            AddOpportunityInputSchema,
+            AddOpportunityOutputSchema,
+        );
     }
 
-    private async execute(input: AddOpportunityInput): Promise<AddOpportunityOutput> {
+    protected async execute(input: AddOpportunityInput): Promise<AddOpportunityOutput> {
         this.logger.sys.info('🚀 [TOOL TRIGGERED] add-opportunity called with:', { input });
 
         const opportunity = Opportunity.create(input);
