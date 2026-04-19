@@ -1,6 +1,5 @@
 import { Agent } from '@mastra/core/agent';
 import type { Memory } from '@mastra/memory';
-import type { Tool, ToolSet } from '@mastra/core/tools';
 
 import { AppLogger } from '../Core/AppLogger';
 import { Container } from '../Core/Container';
